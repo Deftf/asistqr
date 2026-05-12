@@ -2,717 +2,977 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0f1923">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Asistencia">
-<meta name="description" content="Sistema de asistencia escolar por QR">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="AsistQR">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
-<title>AsistQR — Control de Asistencia</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
+<title>AsistQR</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #0f1923;
-  --bg2: #1a2535;
-  --bg3: #243040;
-  --accent: #00d4aa;
-  --accent2: #0095ff;
-  --warn: #ff6b35;
-  --text: #f0f4f8;
-  --text2: #8ba3bf;
-  --text3: #4d6478;
-  --success: #00c97b;
-  --error: #ff4757;
-  --radius: 16px;
-  --radius-sm: 10px;
+/* ──────────────────────────────
+   TOKENS
+────────────────────────────── */
+:root{
+  --white:#ffffff;
+  --off:#f7f6f4;
+  --paper:#f0ede8;
+  --ink:#0a0a0a;
+  --ink2:#3a3a3a;
+  --ink3:#7a7a7a;
+  --ink4:#b8b8b8;
+  --line:#e0ddd8;
+  --line2:#c8c4be;
+  --accent:#0a0a0a;
+  --red:#c0392b;
+  --green:#1a6b3a;
+  --gold:#9a7c3a;
+  --r:14px;
+  --rs:8px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
 }
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--white);color:var(--ink);font-family:'DM Sans',sans-serif}
 
-/* ── Pantallas ── */
-.screen { position: absolute; inset: 0; display: flex; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity .3s ease; overflow: hidden; }
-.screen.active { opacity: 1; pointer-events: all; }
+/* ──────────────────────────────
+   PANTALLAS
+────────────────────────────── */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .25s ease;overflow:hidden;background:var(--white)}
+.screen.active{opacity:1;pointer-events:all}
+.screen.slide-in{animation:slideIn .3s cubic-bezier(.4,0,.2,1) forwards}
+.screen.slide-out{animation:slideOut .25s ease forwards}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
+@keyframes slideOut{from{transform:none;opacity:1}to{transform:translateX(-6%);opacity:0}}
 
-/* ── LOGIN ── */
-#screen-login {
-  background: var(--bg);
-  align-items: center;
-  justify-content: center;
-  gap: 0;
+/* ──────────────────────────────
+   PATRÓN JAPONÉS (sutil)
+────────────────────────────── */
+.jp-pattern{
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 23px,rgba(0,0,0,.04) 24px),
+    repeating-linear-gradient(90deg,transparent,transparent 23px,rgba(0,0,0,.04) 24px);
+  background-size:24px 24px;
 }
-.login-glow {
-  position: absolute;
-  width: 320px; height: 320px;
-  background: radial-gradient(circle, rgba(0,212,170,.15) 0%, transparent 70%);
-  top: 10%; left: 50%; transform: translateX(-50%);
-  pointer-events: none;
-}
-.login-card {
-  width: 100%; max-width: 380px;
-  padding: 0 28px;
-  display: flex; flex-direction: column; gap: 20px;
-  position: relative; z-index: 1;
-}
-.logo-area { text-align: center; padding: 40px 0 24px; }
-.logo-icon {
-  width: 72px; height: 72px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border-radius: 22px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 32px;
-  margin-bottom: 16px;
-  box-shadow: 0 0 40px rgba(0,212,170,.3);
-}
-.logo-title { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -1px; }
-.logo-title span { color: var(--accent); }
-.logo-sub { color: var(--text2); font-size: 14px; margin-top: 4px; }
-.field-label { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
-.field-input {
-  width: 100%; padding: 14px 16px;
-  background: var(--bg2); border: 1.5px solid var(--bg3);
-  border-radius: var(--radius-sm); color: var(--text);
-  font-family: 'DM Sans', sans-serif; font-size: 15px;
-  outline: none; transition: border-color .2s;
-}
-.field-input:focus { border-color: var(--accent); }
-.field-input::placeholder { color: var(--text3); }
-.btn-main {
-  width: 100%; padding: 16px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border: none; border-radius: var(--radius-sm);
-  color: #0f1923; font-family: 'Space Grotesk', sans-serif;
-  font-size: 15px; font-weight: 700; letter-spacing: .3px;
-  cursor: pointer; transition: opacity .2s, transform .1s;
-}
-.btn-main:active { opacity: .85; transform: scale(.98); }
-.install-hint {
-  background: rgba(0,212,170,.08); border: 1px solid rgba(0,212,170,.2);
-  border-radius: var(--radius-sm); padding: 12px 16px;
-  display: flex; align-items: flex-start; gap: 10px;
-  font-size: 13px; color: var(--text2);
-}
-.install-hint-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.jp-border-top{border-top:3px solid var(--ink);position:relative}
+.jp-border-top::after{content:'';position:absolute;top:2px;left:0;right:0;height:1px;background:var(--ink4)}
 
-/* ── MAIN / SECCIONES ── */
-#screen-main {
-  background: var(--bg);
-  flex-direction: column;
+/* ──────────────────────────────
+   PANTALLA: INICIO / LOGIN
+────────────────────────────── */
+#sc-login{justify-content:center;align-items:center}
+#sc-login .bg-deco{
+  position:absolute;inset:0;pointer-events:none;overflow:hidden;
 }
-.topbar {
-  padding: 52px 22px 16px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--bg3);
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
+#sc-login .bg-deco::before{
+  content:'出席';font-family:'Noto Serif JP',serif;
+  font-size:220px;font-weight:600;color:rgba(0,0,0,.03);
+  position:absolute;bottom:-40px;right:-40px;line-height:1;
+  letter-spacing:-10px;
 }
-.topbar-left { display: flex; flex-direction: column; gap: 2px; }
-.topbar-greeting { font-size: 13px; color: var(--text2); }
-.topbar-name { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600; }
-.topbar-btn {
-  background: var(--bg3); border: none; border-radius: 10px;
-  padding: 8px 14px; color: var(--text2); font-family: 'DM Sans', sans-serif;
-  font-size: 13px; cursor: pointer;
-}
-.section-header { padding: 20px 22px 10px; flex-shrink: 0; }
-.section-title { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; color: var(--text2); }
-.sections-list { padding: 0 16px; overflow-y: auto; flex: 1; }
-.section-card {
-  background: var(--bg2); border: 1.5px solid var(--bg3);
-  border-radius: var(--radius); padding: 18px 20px;
-  margin-bottom: 10px; cursor: pointer;
-  display: flex; align-items: center; justify-content: space-between;
-  transition: border-color .2s, background .2s;
-  -webkit-user-select: none;
-}
-.section-card:active { background: var(--bg3); border-color: var(--accent); }
-.section-card-left { display: flex; flex-direction: column; gap: 4px; }
-.section-card-name { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; }
-.section-card-meta { font-size: 13px; color: var(--text2); }
-.section-badge {
-  background: rgba(0,212,170,.12); color: var(--accent);
-  border: 1px solid rgba(0,212,170,.25);
-  border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 600;
-}
-.section-badge.warn { background: rgba(255,107,53,.12); color: var(--warn); border-color: rgba(255,107,53,.25); }
-.fab-area { padding: 16px; flex-shrink: 0; }
-
-/* ── ESCÁNER ── */
-#screen-scanner { background: #000; }
-.scanner-header {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-  padding: 52px 20px 16px;
-  background: linear-gradient(to bottom, rgba(0,0,0,.8), transparent);
-  display: flex; align-items: center; gap: 14px;
-}
-.btn-back {
-  background: rgba(255,255,255,.12); border: none; border-radius: 10px;
-  padding: 8px 14px; color: #fff; font-family: 'DM Sans', sans-serif;
-  font-size: 14px; cursor: pointer; backdrop-filter: blur(4px);
-}
-.scanner-section-label {
-  font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 600; color: #fff;
-}
-#scanner-video { width: 100%; height: 100%; object-fit: cover; }
-.scanner-overlay {
-  position: absolute; inset: 0; z-index: 5;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  pointer-events: none;
-}
-.scanner-frame {
-  width: 230px; height: 230px; position: relative;
-}
-.scanner-frame::before, .scanner-frame::after,
-.scanner-frame-inner::before, .scanner-frame-inner::after {
-  content: ''; position: absolute; width: 36px; height: 36px; border-color: var(--accent); border-style: solid;
-}
-.scanner-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-.scanner-frame::after { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
-.scanner-frame-inner::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
-.scanner-frame-inner::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
-.scanner-line {
-  position: absolute; left: 6px; right: 6px; height: 2px;
-  background: linear-gradient(to right, transparent, var(--accent), transparent);
-  animation: scanline 2s ease-in-out infinite;
-  border-radius: 1px;
-}
-@keyframes scanline {
-  0% { top: 8px; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 218px; opacity: 0; }
-}
-.scanner-hint {
-  margin-top: 28px;
-  background: rgba(0,0,0,.6); backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 30px; padding: 8px 20px;
-  color: rgba(255,255,255,.85); font-size: 14px;
-}
-.scan-counter {
-  position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,.6); backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: var(--radius-sm); padding: 10px 20px;
-  text-align: center; z-index: 10;
-}
-.scan-counter-num { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; color: var(--accent); }
-.scan-counter-label { font-size: 12px; color: rgba(255,255,255,.6); }
-.scan-log {
-  position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-  padding: 0 16px 28px;
-  display: flex; flex-direction: column; gap: 6px;
-  pointer-events: none;
-}
-.scan-log-item {
-  background: rgba(15,25,35,.9); backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: var(--radius-sm); padding: 10px 14px;
-  display: flex; align-items: center; gap: 10px;
-  animation: slideup .3s ease;
-}
-@keyframes slideup { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.scan-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.scan-dot.ok { background: var(--success); box-shadow: 0 0 8px var(--success); }
-.scan-dot.err { background: var(--error); }
-.scan-log-name { font-size: 14px; font-weight: 500; flex: 1; color: #fff; }
-.scan-log-time { font-size: 12px; color: rgba(255,255,255,.4); }
-
-/* ── RESULTADO ── */
-.result-toast {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  display: flex; align-items: center; gap: 14px;
-  padding: 52px 20px 20px;
-  transform: translateY(-100%);
-  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
-}
-.result-toast.show { transform: none; }
-.result-toast.ok { background: linear-gradient(to bottom, rgba(0,201,123,.95), rgba(0,201,123,.85)); }
-.result-toast.err { background: linear-gradient(to bottom, rgba(255,71,87,.95), rgba(255,71,87,.85)); }
-.result-toast-icon { font-size: 28px; }
-.result-toast-name { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; }
-.result-toast-sub { font-size: 13px; opacity: .8; }
-
-/* ── RESUMEN ── */
-#screen-summary {
-  background: var(--bg);
-  flex-direction: column;
-}
-.summary-header {
-  padding: 52px 22px 20px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--bg3);
-  display: flex; align-items: center; gap: 14px;
-  flex-shrink: 0;
-}
-.summary-title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; }
-.summary-meta { font-size: 13px; color: var(--text2); margin-top: 2px; }
-.summary-stats {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px; padding: 16px 16px 0;
-  flex-shrink: 0;
-}
-.stat-card {
-  background: var(--bg2); border: 1px solid var(--bg3);
-  border-radius: var(--radius-sm); padding: 14px 16px;
-}
-.stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; }
-.stat-num.green { color: var(--success); }
-.stat-num.red { color: var(--error); }
-.stat-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
-.summary-list-header { padding: 16px 22px 8px; font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: .8px; flex-shrink: 0; }
-.summary-list { padding: 0 16px; overflow-y: auto; flex: 1; }
-.summary-item {
-  background: var(--bg2); border: 1px solid var(--bg3);
-  border-radius: var(--radius-sm); padding: 12px 16px;
-  margin-bottom: 8px;
-  display: flex; align-items: center; gap: 12px;
-}
-.summary-item-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.summary-item-name { font-size: 15px; flex: 1; }
-.summary-item-time { font-size: 12px; color: var(--text2); }
-.summary-actions { padding: 12px 16px; display: flex; gap: 8px; flex-shrink: 0; }
-.btn-sec {
-  flex: 1; padding: 14px;
-  background: var(--bg2); border: 1.5px solid var(--bg3);
-  border-radius: var(--radius-sm); color: var(--text);
-  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
-  cursor: pointer; transition: background .2s;
-}
-.btn-sec:active { background: var(--bg3); }
-.btn-primary-sm {
-  flex: 1; padding: 14px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border: none; border-radius: var(--radius-sm);
-  color: #0f1923; font-family: 'Space Grotesk', sans-serif;
-  font-size: 14px; font-weight: 700; cursor: pointer;
+#sc-login .bg-deco::after{
+  content:'';position:absolute;
+  top:0;left:0;right:0;height:4px;
+  background:var(--ink);
 }
 
-/* ── MODAL CONFIG ── */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
-  display: flex; align-items: flex-end;
-  opacity: 0; pointer-events: none; transition: opacity .3s;
+.login-inner{
+  width:100%;max-width:380px;padding:0 28px;
+  display:flex;flex-direction:column;gap:22px;
+  position:relative;z-index:1;
 }
-.modal-overlay.open { opacity: 1; pointer-events: all; }
-.modal-sheet {
-  background: var(--bg2); border-radius: 24px 24px 0 0;
-  width: 100%; padding: 24px 22px 40px;
-  transform: translateY(100%); transition: transform .35s cubic-bezier(.34,1.2,.64,1);
-  border-top: 1px solid var(--bg3);
+.login-mark{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding-bottom:8px;
 }
-.modal-overlay.open .modal-sheet { transform: none; }
-.modal-handle { width: 40px; height: 4px; background: var(--bg3); border-radius: 2px; margin: 0 auto 20px; }
-.modal-title { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 18px; }
-.modal-field { margin-bottom: 14px; }
-.btn-modal-save {
-  width: 100%; padding: 15px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border: none; border-radius: var(--radius-sm);
-  color: #0f1923; font-family: 'Space Grotesk', sans-serif;
-  font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px;
+.login-kanji{
+  font-family:'Noto Serif JP',serif;
+  font-size:48px;font-weight:300;color:var(--ink);
+  letter-spacing:4px;line-height:1;
 }
+.login-brand{
+  font-family:'DM Sans',sans-serif;
+  font-size:11px;font-weight:600;letter-spacing:6px;
+  text-transform:uppercase;color:var(--ink3);
+}
+.login-divider{
+  display:flex;align-items:center;gap:10px;
+  font-size:11px;color:var(--ink4);letter-spacing:2px;
+}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field-lbl{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--ink3)}
+.field-inp{
+  width:100%;padding:13px 14px;
+  border:1.5px solid var(--line);border-radius:var(--rs);
+  background:var(--off);color:var(--ink);
+  font-family:'DM Sans',sans-serif;font-size:15px;outline:none;
+  transition:border-color .2s,background .2s;
+}
+.field-inp:focus{border-color:var(--ink);background:var(--white)}
+.field-inp::placeholder{color:var(--ink4)}
+
+.field-hint{font-size:12px;color:var(--ink3);line-height:1.5}
+.field-hint a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+
+.btn-login{
+  width:100%;padding:15px;
+  background:var(--ink);border:none;border-radius:var(--rs);
+  color:var(--white);font-family:'DM Sans',sans-serif;
+  font-size:15px;font-weight:600;letter-spacing:.5px;
+  cursor:pointer;transition:opacity .15s,transform .1s;
+  position:relative;overflow:hidden;
+}
+.btn-login::after{
+  content:'→';position:absolute;right:18px;top:50%;
+  transform:translateY(-50%);font-size:18px;opacity:.5;
+}
+.btn-login:active{opacity:.85;transform:scale(.99)}
+
+.install-pill{
+  background:var(--off);border:1px solid var(--line);
+  border-radius:30px;padding:10px 16px;
+  display:flex;gap:10px;align-items:flex-start;
+  font-size:12px;color:var(--ink3);line-height:1.5;
+}
+
+/* ──────────────────────────────
+   TOP BAR COMPARTIDO
+────────────────────────────── */
+.topbar{
+  padding:calc(var(--safe-top) + 14px) 20px 14px;
+  background:var(--white);
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;position:relative;
+}
+.topbar::after{content:'';position:absolute;bottom:-3px;left:0;right:0;height:3px;background:var(--ink)}
+.topbar-left{display:flex;flex-direction:column;gap:2px}
+.topbar-tag{font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--ink3)}
+.topbar-title{font-family:'Noto Serif JP',serif;font-size:20px;font-weight:400;letter-spacing:.5px}
+.topbar-right{display:flex;gap:8px}
+.icon-btn{
+  width:38px;height:38px;border-radius:50%;
+  border:1.5px solid var(--line);background:var(--off);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;transition:background .15s;
+}
+.icon-btn:active{background:var(--line)}
+
+/* ──────────────────────────────
+   PANTALLA: SECCIONES
+────────────────────────────── */
+#sc-main{background:var(--off)}
+.sections-scroll{flex:1;overflow-y:auto;padding:16px 16px calc(var(--safe-bot)+16px)}
+
+.date-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--ink);color:var(--white);
+  border-radius:20px;padding:6px 14px;font-size:12px;font-weight:500;
+  letter-spacing:.5px;margin-bottom:16px;
+}
+
+.section-card{
+  background:var(--white);border:1px solid var(--line);
+  border-radius:var(--r);padding:18px 20px;
+  margin-bottom:10px;cursor:pointer;
+  display:flex;align-items:center;gap:14px;
+  transition:border-color .15s,transform .1s,box-shadow .15s;
+  position:relative;overflow:hidden;
+}
+.section-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;
+  width:3px;background:transparent;transition:background .2s;
+}
+.section-card:active{transform:scale(.99);box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.section-card.done::before{background:var(--green)}
+.section-card.pending::before{background:var(--line2)}
+
+.section-icon{
+  width:44px;height:44px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Noto Serif JP',serif;font-size:14px;font-weight:600;
+  flex-shrink:0;letter-spacing:1px;
+}
+.section-icon.done{background:rgba(26,107,58,.08);color:var(--green)}
+.section-icon.pending{background:var(--off);color:var(--ink3)}
+
+.section-info{flex:1;min-width:0}
+.section-name{font-size:17px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.section-meta{font-size:13px;color:var(--ink3);margin-top:2px}
+.section-badge{
+  font-size:12px;font-weight:600;padding:5px 11px;
+  border-radius:20px;flex-shrink:0;
+}
+.section-badge.done{background:rgba(26,107,58,.1);color:var(--green)}
+.section-badge.pending{background:var(--off);color:var(--ink3)}
+
+.loading-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:48px 20px;color:var(--ink3);
+}
+.loading-kanji{
+  font-family:'Noto Serif JP',serif;font-size:36px;color:var(--ink4);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.loading-txt{font-size:13px;letter-spacing:1px}
+
+.error-state{
+  background:rgba(192,57,43,.06);border:1px solid rgba(192,57,43,.2);
+  border-radius:var(--rs);padding:16px;margin:0 0 12px;
+  font-size:13px;color:var(--red);line-height:1.6;
+}
+
+/* ──────────────────────────────
+   PANTALLA: ESCÁNER
+────────────────────────────── */
+#sc-scanner{background:#000}
+#qr-video{width:100%;height:100%;object-fit:cover}
+.scanner-ui{position:absolute;inset:0;z-index:5;pointer-events:none;display:flex;flex-direction:column}
+
+.scanner-top{
+  padding:calc(var(--safe-top)+12px) 18px 18px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.75),transparent);
+  display:flex;align-items:center;gap:14px;pointer-events:all;
+}
+.scanner-back{
+  background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.2);border-radius:10px;
+  padding:8px 14px;color:#fff;font-family:'DM Sans',sans-serif;
+  font-size:14px;cursor:pointer;
+}
+.scanner-head{display:flex;flex-direction:column;gap:2px}
+.scanner-label{font-size:11px;color:rgba(255,255,255,.6);letter-spacing:2px;text-transform:uppercase}
+.scanner-section{font-family:'Noto Serif JP',serif;font-size:18px;color:#fff;font-weight:400}
+
+.scanner-frame-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+}
+.scanner-frame{
+  width:220px;height:220px;position:relative;
+}
+.corner{position:absolute;width:30px;height:30px;border-color:#fff;border-style:solid}
+.corner.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0}
+.corner.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0}
+.corner.bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px}
+.corner.br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0}
+.scan-line{
+  position:absolute;left:4px;right:4px;height:1.5px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);
+  animation:scanmove 2.2s ease-in-out infinite;
+}
+@keyframes scanmove{0%{top:4px;opacity:0}8%{opacity:1}92%{opacity:1}100%{top:212px;opacity:0}}
+
+.scanner-bottom{
+  padding:18px 18px calc(var(--safe-bot)+28px);
+  background:linear-gradient(to top,rgba(0,0,0,.8),transparent);
+  display:flex;flex-direction:column;gap:10px;pointer-events:all;
+}
+.scan-counter-row{display:flex;align-items:center;justify-content:space-between}
+.scan-count-box{
+  background:rgba(255,255,255,.12);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.18);border-radius:10px;
+  padding:10px 16px;display:flex;align-items:center;gap:10px;
+}
+.scan-count-num{font-family:'Noto Serif JP',serif;font-size:28px;color:#fff;font-weight:300;line-height:1}
+.scan-count-lbl{font-size:11px;color:rgba(255,255,255,.55);letter-spacing:1px;line-height:1.4}
+.scan-summary-btn{
+  background:var(--white);border:none;border-radius:10px;
+  padding:10px 18px;font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:600;cursor:pointer;color:var(--ink);
+}
+.scan-feed{display:flex;flex-direction:column;gap:6px}
+.feed-item{
+  background:rgba(10,10,10,.85);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.1);border-radius:10px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;
+  animation:feedIn .3s ease;
+}
+@keyframes feedIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.feed-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.feed-dot.ok{background:#4caf7a;box-shadow:0 0 6px rgba(76,175,122,.6)}
+.feed-dot.dup{background:#e8a030}
+.feed-name{font-size:14px;color:#fff;flex:1;font-weight:500}
+.feed-time{font-size:11px;color:rgba(255,255,255,.4)}
+
+/* ──────────────────────────────
+   TOAST
+────────────────────────────── */
+#toast{
+  position:fixed;top:0;left:0;right:0;z-index:999;
+  padding:calc(var(--safe-top)+12px) 18px 18px;
+  display:flex;align-items:center;gap:14px;
+  transform:translateY(-110%);transition:transform .35s cubic-bezier(.34,1.4,.64,1);
+}
+#toast.show{transform:none}
+#toast.ok{background:var(--green)}
+#toast.dup{background:var(--gold)}
+#toast.err{background:var(--red)}
+.toast-ico{font-size:26px;flex-shrink:0}
+.toast-name{font-size:16px;font-weight:600;color:#fff}
+.toast-sub{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px}
+
+/* ──────────────────────────────
+   PANTALLA: HISTORIAL / RESUMEN
+────────────────────────────── */
+#sc-history{background:var(--off)}
+.hist-tabs{
+  display:flex;gap:0;border-bottom:1px solid var(--line);
+  background:var(--white);flex-shrink:0;
+  overflow-x:auto;padding:0 16px;
+}
+.hist-tab{
+  padding:12px 18px;font-size:13px;font-weight:500;
+  cursor:pointer;color:var(--ink3);border-bottom:2px solid transparent;
+  white-space:nowrap;transition:color .15s,border-color .15s;
+  flex-shrink:0;
+}
+.hist-tab.active{color:var(--ink);border-bottom-color:var(--ink)}
+.hist-content{flex:1;overflow-y:auto;padding:16px 16px calc(var(--safe-bot)+16px)}
+
+.hist-stats{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;
+}
+.hist-stat{
+  background:var(--white);border:1px solid var(--line);border-radius:var(--rs);
+  padding:12px 14px;
+}
+.hist-stat-num{font-family:'Noto Serif JP',serif;font-size:26px;font-weight:300;line-height:1}
+.hist-stat-num.g{color:var(--green)}
+.hist-stat-num.r{color:var(--red)}
+.hist-stat-lbl{font-size:11px;color:var(--ink3);margin-top:4px;letter-spacing:.5px}
+
+.filter-bar{
+  display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;
+}
+.filter-chip{
+  padding:7px 14px;border-radius:20px;font-size:13px;cursor:pointer;
+  border:1.5px solid var(--line);background:var(--white);color:var(--ink3);
+  white-space:nowrap;transition:all .15s;flex-shrink:0;
+}
+.filter-chip.active{background:var(--ink);color:var(--white);border-color:var(--ink)}
+
+.hist-list{display:flex;flex-direction:column;gap:8px}
+.hist-row{
+  background:var(--white);border:1px solid var(--line);
+  border-radius:var(--rs);padding:13px 16px;
+  display:flex;align-items:center;gap:12px;
+}
+.hist-row-left{flex:1;min-width:0}
+.hist-row-name{font-size:15px;font-weight:500}
+.hist-row-meta{font-size:12px;color:var(--ink3);margin-top:2px}
+.hist-row-time{font-size:12px;color:var(--ink3)}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.p{background:var(--green)}
+
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:48px 20px;color:var(--ink3);
+}
+.empty-kanji{font-family:'Noto Serif JP',serif;font-size:40px;color:var(--ink4)}
+.empty-txt{font-size:13px;text-align:center;line-height:1.6}
+
+/* ──────────────────────────────
+   MODAL CONFIG
+────────────────────────────── */
+.overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.4);backdrop-filter:blur(3px);
+  opacity:0;pointer-events:none;transition:opacity .25s;
+  display:flex;align-items:flex-end;
+}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--white);border-radius:20px 20px 0 0;
+  width:100%;max-height:88vh;overflow-y:auto;
+  padding:0 22px calc(var(--safe-bot)+28px);
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+  border-top:3px solid var(--ink);
+}
+.overlay.open .modal{transform:none}
+.modal-handle{width:36px;height:4px;background:var(--line);border-radius:2px;margin:18px auto 22px}
+.modal-title{font-family:'Noto Serif JP',serif;font-size:20px;font-weight:400;margin-bottom:22px}
+.modal-sect{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin:20px 0 10px}
+.btn-save{
+  width:100%;padding:15px;margin-top:10px;
+  background:var(--ink);border:none;border-radius:var(--rs);
+  color:var(--white);font-family:'DM Sans',sans-serif;
+  font-size:15px;font-weight:600;cursor:pointer;
+}
+.btn-save:active{opacity:.85}
+.btn-danger{
+  width:100%;padding:13px;margin-top:8px;
+  background:none;border:1.5px solid rgba(192,57,43,.3);border-radius:var(--rs);
+  color:var(--red);font-family:'DM Sans',sans-serif;
+  font-size:14px;cursor:pointer;
+}
+
+/* ──────────────────────────────
+   UTILIDADES
+────────────────────────────── */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+textarea.field-inp{resize:none;line-height:1.6}
 </style>
 </head>
 <body>
 
-<!-- ══ TOAST RESULTADO ══ -->
-<div class="result-toast" id="result-toast">
-  <div class="result-toast-icon" id="toast-icon">✓</div>
+<!-- TOAST -->
+<div id="toast" role="alert">
+  <div class="toast-ico" id="toast-ico">✓</div>
   <div>
-    <div class="result-toast-name" id="toast-name">Alumno registrado</div>
-    <div class="result-toast-sub" id="toast-sub">Presente — 08:15 am</div>
+    <div class="toast-name" id="toast-name"></div>
+    <div class="toast-sub" id="toast-sub"></div>
   </div>
 </div>
 
-<!-- ══ PANTALLA: LOGIN ══ -->
-<div class="screen active" id="screen-login">
-  <div class="login-glow"></div>
-  <div class="login-card">
-    <div class="logo-area">
-      <div class="logo-icon">📋</div>
-      <div class="logo-title">Asist<span>QR</span></div>
-      <div class="logo-sub">Sistema de asistencia escolar</div>
+<!-- ══ INICIO ══ -->
+<div class="screen active" id="sc-login">
+  <div class="bg-deco"></div>
+  <div class="login-inner">
+    <div class="login-mark">
+      <div class="login-kanji">出席</div>
+      <div class="login-brand">AsistQR · Control de asistencia</div>
     </div>
-
-    <div>
-      <div class="field-label">Nombre del docente</div>
-      <input class="field-input" id="input-nombre" type="text" placeholder="Ej: Prof. María García" autocomplete="name">
+    <div class="login-divider">acceso docente</div>
+    <div class="field">
+      <div class="field-lbl">Nombre del docente</div>
+      <input class="field-inp" id="inp-nombre" type="text" placeholder="Prof. García Quispe" autocomplete="name">
     </div>
-    <div>
-      <div class="field-label">URL del webhook (Google Sheets)</div>
-      <input class="field-input" id="input-webhook" type="url" placeholder="https://script.google.com/macros/s/...">
+    <div class="field">
+      <div class="field-lbl">URL del webhook</div>
+      <input class="field-inp" id="inp-webhook" type="url" placeholder="https://script.google.com/macros/s/…/exec">
+      <div class="field-hint">
+        Esta URL la obtienes al publicar el Apps Script como aplicación web.
+        <a href="#" onclick="return false" id="webhook-help-link">¿Cómo obtenerla?</a>
+      </div>
     </div>
-
-    <button class="btn-main" onclick="doLogin()">Entrar al sistema</button>
-
-    <div class="install-hint" id="install-hint" style="display:none">
-      <div class="install-hint-icon">📲</div>
-      <div>Para instalar como app: toca <strong>Compartir → Agregar a pantalla de inicio</strong> (iOS) o el ícono de instalación en la barra del navegador (Android).</div>
+    <button class="btn-login" id="btn-entrar" onclick="doLogin()">Entrar al sistema</button>
+    <div class="install-pill" id="install-pill" style="display:none">
+      <span>📲</span>
+      <span>Para instalar como app: toca <strong>Compartir → Agregar a inicio</strong> (iOS) o el ícono en la barra del navegador (Android).</span>
     </div>
   </div>
 </div>
 
-<!-- ══ PANTALLA: SECCIONES ══ -->
-<div class="screen" id="screen-main">
+<!-- ══ SECCIONES ══ -->
+<div class="screen" id="sc-main">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="topbar-greeting">Bienvenid@,</div>
-      <div class="topbar-name" id="main-nombre">Docente</div>
+      <div class="topbar-tag">Docente</div>
+      <div class="topbar-title" id="main-nombre">—</div>
     </div>
-    <button class="topbar-btn" onclick="openConfig()">⚙ Config</button>
+    <div class="topbar-right">
+      <div class="icon-btn" onclick="goHistory()" title="Historial">📋</div>
+      <div class="icon-btn" onclick="openModal()" title="Ajustes">⚙</div>
+    </div>
   </div>
-  <div class="section-header">
-    <div class="section-title">¿Qué sección vas a tomar hoy?</div>
-  </div>
-  <div class="sections-list" id="sections-list">
-    <!-- Generado dinámicamente -->
-  </div>
-  <div class="fab-area">
-    <button class="btn-main" onclick="openConfig()">+ Agregar sección</button>
+  <div class="sections-scroll">
+    <div class="date-chip" id="date-chip">—</div>
+    <div id="sections-container">
+      <div class="loading-state">
+        <div class="loading-kanji">読</div>
+        <div class="loading-txt">Cargando secciones…</div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ══ PANTALLA: ESCÁNER ══ -->
-<div class="screen" id="screen-scanner">
-  <video id="scanner-video" playsinline></video>
-  <div class="scanner-header">
-    <button class="btn-back" onclick="stopScanner()">← Volver</button>
-    <div class="scanner-section-label" id="scanner-section-name">Sección</div>
-  </div>
-  <div class="scanner-overlay">
-    <div class="scanner-frame">
-      <div class="scanner-frame-inner"></div>
-      <div class="scanner-line"></div>
+<!-- ══ ESCÁNER ══ -->
+<div class="screen" id="sc-scanner">
+  <video id="qr-video" playsinline muted></video>
+  <div class="scanner-ui">
+    <div class="scanner-top">
+      <button class="scanner-back" onclick="stopScanner()">← Volver</button>
+      <div class="scanner-head">
+        <div class="scanner-label">Tomando asistencia</div>
+        <div class="scanner-section" id="scanner-section-lbl">—</div>
+      </div>
     </div>
-    <div class="scanner-hint">Apunta al QR del alumno</div>
-  </div>
-  <div class="scan-counter">
-    <div class="scan-counter-num" id="scan-count">0</div>
-    <div class="scan-counter-label">registros hoy</div>
-  </div>
-  <div class="scan-log" id="scan-log"></div>
-</div>
-
-<!-- ══ PANTALLA: RESUMEN ══ -->
-<div class="screen" id="screen-summary">
-  <div class="summary-header">
-    <button class="btn-back" style="background:var(--bg3);color:var(--text)" onclick="showScreen('main')">←</button>
-    <div>
-      <div class="summary-title" id="summary-section-name">Resumen</div>
-      <div class="summary-meta" id="summary-date">Hoy</div>
+    <div class="scanner-frame-wrap">
+      <div class="scanner-frame">
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+        <div class="scan-line"></div>
+      </div>
     </div>
-  </div>
-  <div class="summary-stats">
-    <div class="stat-card">
-      <div class="stat-num green" id="stat-presentes">0</div>
-      <div class="stat-label">Presentes</div>
+    <div class="scanner-bottom">
+      <div class="scan-counter-row">
+        <div class="scan-count-box">
+          <div>
+            <div class="scan-count-num" id="scan-num">0</div>
+            <div class="scan-count-lbl">escaneados<br>hoy</div>
+          </div>
+        </div>
+        <button class="scan-summary-btn" onclick="stopScanner()">Ver resumen →</button>
+      </div>
+      <div class="scan-feed" id="scan-feed"></div>
     </div>
-    <div class="stat-card">
-      <div class="stat-num red" id="stat-ausentes">0</div>
-      <div class="stat-label">Pendientes</div>
-    </div>
-  </div>
-  <div class="summary-list-header">Registros de hoy</div>
-  <div class="summary-list" id="summary-list"></div>
-  <div class="summary-actions">
-    <button class="btn-sec" onclick="startScanner(currentSection)">📷 Seguir escaneando</button>
-    <button class="btn-primary-sm" onclick="showScreen('main')">✓ Finalizar</button>
   </div>
 </div>
 
-<!-- ══ MODAL: CONFIG ══ -->
-<div class="modal-overlay" id="modal-config" onclick="closeConfig(event)">
-  <div class="modal-sheet">
+<!-- ══ HISTORIAL ══ -->
+<div class="screen" id="sc-history">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-tag">Registros</div>
+      <div class="topbar-title">Asistencia</div>
+    </div>
+    <div class="topbar-right">
+      <div class="icon-btn" onclick="showScreen('main')">✕</div>
+    </div>
+  </div>
+  <div class="hist-tabs" id="hist-tabs">
+    <!-- generado dinámicamente -->
+  </div>
+  <div class="hist-content" id="hist-content">
+    <!-- generado dinámicamente -->
+  </div>
+</div>
+
+<!-- ══ MODAL CONFIG ══ -->
+<div class="overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Configuración</div>
-
-    <div class="modal-field">
-      <div class="field-label">Tu nombre</div>
-      <input class="field-input" id="cfg-nombre" type="text" placeholder="Prof. García">
+    <div class="modal-sect">Perfil</div>
+    <div class="field" style="margin-bottom:12px">
+      <div class="field-lbl">Tu nombre</div>
+      <input class="field-inp" id="cfg-nombre" type="text">
     </div>
-    <div class="modal-field">
-      <div class="field-label">URL del webhook</div>
-      <input class="field-input" id="cfg-webhook" type="url" placeholder="https://script.google.com/...">
+    <div class="field">
+      <div class="field-lbl">URL del webhook</div>
+      <input class="field-inp" id="cfg-webhook" type="url">
     </div>
-    <div class="modal-field">
-      <div class="field-label">Secciones (una por línea)</div>
-      <textarea class="field-input" id="cfg-secciones" rows="5" placeholder="3° A&#10;3° B&#10;4° A&#10;5° Ciencias" style="resize:none;font-size:15px"></textarea>
-    </div>
-    <button class="btn-modal-save" onclick="saveConfig()">Guardar cambios</button>
+    <button class="btn-save" onclick="saveConfig()">Guardar cambios</button>
+    <div class="modal-sect" style="margin-top:20px">Sesión</div>
+    <button class="btn-danger" onclick="doLogout()">Cerrar sesión y borrar datos</button>
   </div>
 </div>
 
 <script>
-// ── ESTADO ──
-let config = { nombre: '', webhook: '', secciones: [] };
-let currentSection = '';
-let scanLog = [];
-let scanner = null;
-let lastScanned = '';
-let lastScannedTime = 0;
-let scanCount = 0;
+/* ════════════════════════════════════════════════
+   ESTADO GLOBAL
+════════════════════════════════════════════════ */
+const CFG_KEY = 'asistqr-cfg';
+const LOG_KEY = 'asistqr-log'; // cache de asistencia (últimos 7 días)
 
-// ── INIT ──
-(function init() {
-  const saved = localStorage.getItem('asistqr-config');
-  if (saved) {
-    config = JSON.parse(saved);
-    if (config.nombre && config.webhook) {
-      renderMainScreen();
-      showScreen('main');
-      return;
-    }
+let cfg = { nombre:'', webhook:'' };
+let sections = [];      // secciones únicas del Sheets (de la hoja Alumnos)
+let allLogs  = [];      // cache local [{codigo,nombre,dni,grado_seccion,hora,fecha,ts}]
+let currentSection = '';
+let scanner = null;
+let toastTimer = null;
+let lastCode = '';
+let lastCodeTime = 0;
+let histActiveDay = 0;  // índice en DAYS_LABELS
+let histActiveSection = 'todas';
+
+/* ════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════ */
+(function init(){
+  // Cargar config guardada
+  const saved = localStorage.getItem(CFG_KEY);
+  if(saved){ try{ cfg = JSON.parse(saved); }catch(e){} }
+
+  // Cargar logs cacheados
+  const logs = localStorage.getItem(LOG_KEY);
+  if(logs){ try{ allLogs = JSON.parse(logs); }catch(e){ allLogs=[]; } }
+  purgeLogs(); // borrar los de más de 7 días
+
+  // Detectar si ya tiene sesión
+  if(cfg.nombre && cfg.webhook){
+    // Rellenar también los inputs del login por si regresa
+    document.getElementById('inp-nombre').value = cfg.nombre;
+    document.getElementById('inp-webhook').value = cfg.webhook;
+    bootMain();
+  } else {
+    // Pre-rellenar parcialmente si hay algo
+    if(cfg.nombre) document.getElementById('inp-nombre').value = cfg.nombre;
+    if(cfg.webhook) document.getElementById('inp-webhook').value = cfg.webhook;
+    showInstallHint();
   }
-  // Mostrar hint de instalación si es navegador móvil
-  if (/iPhone|iPad|Android/.test(navigator.userAgent)) {
-    document.getElementById('install-hint').style.display = 'flex';
-  }
-  // Pre-rellenar si hay datos parciales
-  if (config.nombre) document.getElementById('input-nombre').value = config.nombre;
-  if (config.webhook) document.getElementById('input-webhook').value = config.webhook;
 })();
 
-// ── PANTALLAS ──
-function showScreen(name) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + name).classList.add('active');
+/* ════════════════════════════════════════════════
+   PANTALLAS
+════════════════════════════════════════════════ */
+function showScreen(name, animate=true){
+  document.querySelectorAll('.screen').forEach(s=>{
+    s.classList.remove('active','slide-in','slide-out');
+  });
+  const el = document.getElementById('sc-'+name);
+  el.classList.add('active');
+  if(animate) el.classList.add('slide-in');
 }
 
-// ── LOGIN ──
-function doLogin() {
-  const nombre = document.getElementById('input-nombre').value.trim();
-  const webhook = document.getElementById('input-webhook').value.trim();
-  if (!nombre) { alert('Ingresa tu nombre'); return; }
-  if (!webhook) { alert('Ingresa la URL del webhook'); return; }
-  config.nombre = nombre;
-  config.webhook = webhook;
-  if (!config.secciones.length) {
-    config.secciones = ['3° A', '3° B', '4° A', '4° B', '5° A'];
+/* ════════════════════════════════════════════════
+   LOGIN
+════════════════════════════════════════════════ */
+function doLogin(){
+  const nombre  = document.getElementById('inp-nombre').value.trim();
+  const webhook = document.getElementById('inp-webhook').value.trim();
+  if(!nombre){  alert('Ingresa tu nombre'); return; }
+  if(!webhook){ alert('Ingresa la URL del webhook'); return; }
+  cfg = { nombre, webhook };
+  saveCfg();
+  bootMain();
+}
+
+function bootMain(){
+  document.getElementById('main-nombre').textContent = cfg.nombre;
+  document.getElementById('date-chip').textContent = formatDateLabel(new Date());
+  showScreen('main', false);
+  loadSections();
+}
+
+function showInstallHint(){
+  if(/iPhone|iPad|Android/.test(navigator.userAgent)){
+    document.getElementById('install-pill').style.display='flex';
   }
-  saveToStorage();
-  renderMainScreen();
+}
+
+/* ════════════════════════════════════════════════
+   LOGOUT
+════════════════════════════════════════════════ */
+function doLogout(){
+  if(!confirm('¿Cerrar sesión? Se borrará la configuración guardada (los datos en Google Sheets se mantienen).')) return;
+  localStorage.removeItem(CFG_KEY);
+  localStorage.removeItem(LOG_KEY);
+  cfg = { nombre:'', webhook:'' };
+  allLogs = [];
+  sections = [];
+  document.getElementById('inp-nombre').value='';
+  document.getElementById('inp-webhook').value='';
+  closeModal();
+  showScreen('login');
+}
+
+/* ════════════════════════════════════════════════
+   CARGAR SECCIONES DESDE EL SHEETS (doGet)
+════════════════════════════════════════════════ */
+async function loadSections(){
+  const cont = document.getElementById('sections-container');
+  cont.innerHTML = `<div class="loading-state"><div class="loading-kanji">読</div><div class="loading-txt">Cargando secciones…</div></div>`;
+
+  try{
+    const url = cfg.webhook + '?action=getSecciones';
+    const res  = await fetch(url, { mode:'cors' });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    sections = data.secciones || [];
+    renderSections();
+  } catch(e){
+    cont.innerHTML = `
+      <div class="error-state">
+        No se pudo conectar con Google Sheets.<br>
+        <strong>Posible causa:</strong> ${e.message}<br><br>
+        Verifica que la URL del webhook sea correcta y que el script esté publicado con acceso <em>"Cualquiera"</em>.
+      </div>`;
+  }
+}
+
+function renderSections(){
+  const cont = document.getElementById('sections-container');
+  if(!sections.length){
+    cont.innerHTML = `<div class="empty-state"><div class="empty-kanji">無</div><div class="empty-txt">No hay alumnos registrados en<br>la hoja <strong>Alumnos</strong> del Google Sheets.</div></div>`;
+    return;
+  }
+  cont.innerHTML = '';
+  const today = dateKey(new Date());
+  sections.forEach(sec=>{
+    const logs = allLogs.filter(l=> l.fecha===today && l.grado_seccion===sec);
+    const done = logs.length > 0;
+    const card = document.createElement('div');
+    card.className = `section-card ${done?'done':'pending'}`;
+    const abbr = sec.replace(/[^0-9A-Za-záéíóúÁÉÍÓÚ°]/g,'').slice(0,3).toUpperCase() || sec.slice(0,2).toUpperCase();
+    card.innerHTML = `
+      <div class="section-icon ${done?'done':'pending'}">${abbr}</div>
+      <div class="section-info">
+        <div class="section-name">${sec}</div>
+        <div class="section-meta">${done ? logs.length+' alumno(s) registrado(s)' : 'Sin registros hoy'}</div>
+      </div>
+      <div class="section-badge ${done?'done':'pending'}">${done ? '✓ '+logs.length : 'Pendiente'}</div>`;
+    card.onclick = ()=> selectSection(sec);
+    cont.appendChild(card);
+  });
+}
+
+/* ════════════════════════════════════════════════
+   SELECCIÓN DE SECCIÓN
+════════════════════════════════════════════════ */
+function selectSection(sec){
+  currentSection = sec;
+  startScanner(sec);
+}
+
+/* ════════════════════════════════════════════════
+   ESCÁNER
+════════════════════════════════════════════════ */
+function startScanner(sec){
+  document.getElementById('scanner-section-lbl').textContent = sec;
+  document.getElementById('scan-feed').innerHTML = '';
+  const today = dateKey(new Date());
+  const todayLogs = allLogs.filter(l=> l.fecha===today && l.grado_seccion===sec);
+  document.getElementById('scan-num').textContent = todayLogs.length;
+  showScreen('scanner');
+
+  const video = document.getElementById('qr-video');
+  // Cargar QrScanner dinámicamente si no existe
+  if(typeof QrScanner === 'undefined'){
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js';
+    s.onload = ()=> launchScanner(video);
+    document.head.appendChild(s);
+  } else {
+    launchScanner(video);
+  }
+}
+
+function launchScanner(video){
+  if(scanner){ scanner.stop(); scanner.destroy(); scanner=null; }
+  scanner = new QrScanner(video, r=> onScan(r.data), {
+    returnDetailedScanResult:true,
+    highlightScanRegion:false,
+    highlightCodeOutline:false,
+    preferredCamera:'environment',
+  });
+  scanner.start().catch(err=>{
+    alert('No se pudo acceder a la cámara: '+err.message);
+    showScreen('main');
+  });
+}
+
+function stopScanner(){
+  if(scanner){ scanner.stop(); scanner.destroy(); scanner=null; }
+  renderSections();
   showScreen('main');
 }
 
-// ── MAIN ──
-function renderMainScreen() {
-  document.getElementById('main-nombre').textContent = config.nombre;
-  const list = document.getElementById('sections-list');
-  list.innerHTML = '';
-  config.secciones.forEach(sec => {
-    const today = getTodayKey(sec);
-    const logs = JSON.parse(localStorage.getItem(today) || '[]');
-    const count = logs.length;
-    const card = document.createElement('div');
-    card.className = 'section-card';
-    card.innerHTML = `
-      <div class="section-card-left">
-        <div class="section-card-name">${sec}</div>
-        <div class="section-card-meta">${count > 0 ? count + ' registros hoy' : 'Sin registros hoy'}</div>
-      </div>
-      <div class="section-badge ${count === 0 ? 'warn' : ''}">${count > 0 ? '✓ ' + count : 'Pendiente'}</div>
-    `;
-    card.onclick = () => selectSection(sec);
-    list.appendChild(card);
-  });
-}
-
-function selectSection(sec) {
-  currentSection = sec;
-  const today = getTodayKey(sec);
-  const logs = JSON.parse(localStorage.getItem(today) || '[]');
-  if (logs.length > 0) {
-    // Ya tiene registros → mostrar opción
-    showSummary(sec);
-  } else {
-    startScanner(sec);
-  }
-}
-
-// ── ESCÁNER ──
-function startScanner(sec) {
-  currentSection = sec;
-  scanLog = [];
-  scanCount = 0;
-  document.getElementById('scanner-section-name').textContent = sec;
-  document.getElementById('scan-log').innerHTML = '';
-  document.getElementById('scan-count').textContent = '0';
-  showScreen('scanner');
-
-  const video = document.getElementById('scanner-video');
-  if (typeof QrScanner === 'undefined') {
-    // Fallback: simular escaneo
-    alert('Biblioteca QR no disponible en esta demo. En producción funciona con cámara real.');
-    return;
-  }
-  scanner = new QrScanner(video, result => handleScan(result.data), {
-    returnDetailedScanResult: true,
-    highlightScanRegion: false,
-    highlightCodeOutline: false,
-  });
-  scanner.start().catch(err => {
-    alert('No se pudo acceder a la cámara: ' + err.message);
-    showScreen('main');
-  });
-}
-
-function stopScanner() {
-  if (scanner) { scanner.stop(); scanner.destroy(); scanner = null; }
-  if (scanLog.length > 0) {
-    showSummary(currentSection);
-  } else {
-    renderMainScreen();
-    showScreen('main');
-  }
-}
-
-function handleScan(code) {
+/* ════════════════════════════════════════════════
+   PROCESAMIENTO DE ESCANEO
+════════════════════════════════════════════════ */
+function onScan(code){
   const now = Date.now();
-  if (code === lastScanned && now - lastScannedTime < 3000) return;
-  lastScanned = code;
-  lastScannedTime = now;
+  if(code===lastCode && now-lastCodeTime < 3000) return;
+  lastCode = code; lastCodeTime = now;
 
-  const today = getTodayKey(currentSection);
-  const logs = JSON.parse(localStorage.getItem(today) || '[]');
+  const today = dateKey(new Date());
+  const hora = timeNow();
 
-  // Verificar duplicado en sesión
-  const ya = logs.find(l => l.codigo === code);
-  if (ya) {
-    showToast(false, 'Ya registrado', ya.alumno + ' — ya está marcado');
-    addLogItem(false, ya.alumno || code);
+  // Verificar duplicado hoy en esta sección
+  const dup = allLogs.find(l=> l.codigo===code && l.fecha===today && l.grado_seccion===currentSection);
+  if(dup){
+    showToast('dup','⚠','Ya registrado',dup.nombre+' — '+dup.hora);
+    addFeedItem(false, dup.nombre, dup.hora);
     return;
   }
 
-  const hora = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
-  const entry = {
-    codigo: code,
-    alumno: code, // El código QR contiene el nombre o ID del alumno
-    hora: hora,
-    fecha: new Date().toLocaleDateString('es-PE'),
-    seccion: currentSection,
-    timestamp: new Date().toISOString(),
-  };
-  logs.push(entry);
-  localStorage.setItem(today, JSON.stringify(logs));
-  scanLog.push(entry);
-  scanCount++;
-  document.getElementById('scan-count').textContent = scanCount;
+  // El código QR contiene: NOMBRE COMPLETO|DNI  (ej: "García López Ana|74123456")
+  // Si no tiene | simplemente usa el código como nombre
+  let nombre = code, dni = '';
+  if(code.includes('|')){
+    const parts = code.split('|');
+    nombre = parts[0].trim();
+    dni    = parts[1] ? parts[1].trim() : '';
+  }
 
-  showToast(true, entry.alumno, 'Presente — ' + hora);
-  addLogItem(true, entry.alumno, hora);
+  const entry = { codigo:code, nombre, dni, grado_seccion:currentSection, hora, fecha:today, ts:new Date().toISOString() };
+  allLogs.push(entry);
+  saveLogs();
+
+  document.getElementById('scan-num').textContent =
+    allLogs.filter(l=> l.fecha===today && l.grado_seccion===currentSection).length;
+
+  showToast('ok','✓', nombre, 'Presente · '+currentSection+' · '+hora);
+  addFeedItem(true, nombre, hora);
   sendToSheets(entry);
 }
 
-function addLogItem(ok, name, hora) {
-  const log = document.getElementById('scan-log');
-  const item = document.createElement('div');
-  item.className = 'scan-log-item';
-  item.innerHTML = `
-    <div class="scan-dot ${ok ? 'ok' : 'err'}"></div>
-    <div class="scan-log-name">${name}</div>
-    <div class="scan-log-time">${hora || ''}</div>
-  `;
-  log.appendChild(item);
-  // Mantener solo últimos 3
-  while (log.children.length > 3) log.removeChild(log.firstChild);
+function addFeedItem(ok, name, hora){
+  const feed = document.getElementById('scan-feed');
+  const el = document.createElement('div');
+  el.className = 'feed-item';
+  el.innerHTML = `<div class="feed-dot ${ok?'ok':'dup'}"></div><div class="feed-name">${name}</div><div class="feed-time">${hora}</div>`;
+  feed.appendChild(el);
+  while(feed.children.length > 3) feed.removeChild(feed.firstChild);
 }
 
-// ── TOAST ──
-let toastTimer = null;
-function showToast(ok, name, sub) {
-  const toast = document.getElementById('result-toast');
-  document.getElementById('toast-icon').textContent = ok ? '✓' : '⚠';
+/* ════════════════════════════════════════════════
+   ENVÍO A GOOGLE SHEETS
+════════════════════════════════════════════════ */
+async function sendToSheets(entry){
+  if(!cfg.webhook) return;
+  try{
+    await fetch(cfg.webhook, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'registrar', ...entry }),
+    });
+  } catch(e){ console.warn('Webhook error:',e); }
+}
+
+/* ════════════════════════════════════════════════
+   HISTORIAL
+════════════════════════════════════════════════ */
+const DAYS_LABELS = ['Hoy','Ayer','Antier','Hace 3 días','Hace 4 días','Hace 5 días','Hace 6 días'];
+
+function goHistory(){
+  histActiveDay = 0;
+  histActiveSection = 'todas';
+  renderHistTabs();
+  renderHistContent();
+  showScreen('history');
+}
+
+function renderHistTabs(){
+  const tabs = document.getElementById('hist-tabs');
+  tabs.innerHTML = '';
+  DAYS_LABELS.forEach((lbl,i)=>{
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const key = dateKey(d);
+    const count = allLogs.filter(l=> l.fecha===key).length;
+    const tab = document.createElement('div');
+    tab.className = `hist-tab ${i===histActiveDay?'active':''}`;
+    tab.textContent = lbl + (count>0?' ('+count+')':'');
+    tab.onclick = ()=>{ histActiveDay=i; histActiveSection='todas'; renderHistTabs(); renderHistContent(); };
+    tabs.appendChild(tab);
+  });
+}
+
+function renderHistContent(){
+  const d = new Date(); d.setDate(d.getDate()-histActiveDay);
+  const key = dateKey(d);
+  const dayLogs = allLogs.filter(l=> l.fecha===key);
+
+  // Secciones disponibles ese día
+  const secsDay = [...new Set(dayLogs.map(l=>l.grado_seccion))];
+
+  const presentes = dayLogs.filter(l=> histActiveSection==='todas' || l.grado_seccion===histActiveSection).length;
+
+  const cont = document.getElementById('hist-content');
+  cont.innerHTML = '';
+
+  // Stats
+  const statsEl = document.createElement('div');
+  statsEl.className = 'hist-stats';
+  statsEl.innerHTML = `
+    <div class="hist-stat"><div class="hist-stat-num g">${presentes}</div><div class="hist-stat-lbl">Presentes</div></div>
+    <div class="hist-stat"><div class="hist-stat-num">${secsDay.length}</div><div class="hist-stat-lbl">Secciones</div></div>
+    <div class="hist-stat"><div class="hist-stat-num">${dayLogs.length}</div><div class="hist-stat-lbl">Total</div></div>`;
+  cont.appendChild(statsEl);
+
+  // Filtros de sección
+  if(secsDay.length > 1){
+    const filterBar = document.createElement('div');
+    filterBar.className = 'filter-bar';
+    const all = document.createElement('div');
+    all.className = `filter-chip ${histActiveSection==='todas'?'active':''}`;
+    all.textContent = 'Todas';
+    all.onclick = ()=>{ histActiveSection='todas'; renderHistContent(); };
+    filterBar.appendChild(all);
+    secsDay.forEach(sec=>{
+      const chip = document.createElement('div');
+      chip.className = `filter-chip ${histActiveSection===sec?'active':''}`;
+      chip.textContent = sec;
+      chip.onclick = ()=>{ histActiveSection=sec; renderHistContent(); };
+      filterBar.appendChild(chip);
+    });
+    cont.appendChild(filterBar);
+  }
+
+  // Lista
+  const filtered = dayLogs.filter(l=> histActiveSection==='todas' || l.grado_seccion===histActiveSection);
+  filtered.sort((a,b)=> a.hora.localeCompare(b.hora));
+
+  if(!filtered.length){
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = `<div class="empty-kanji">無</div><div class="empty-txt">Sin registros para ${histActiveSection==='todas'?'este día':'esta sección en este día'}.</div>`;
+    cont.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'hist-list';
+  filtered.forEach(l=>{
+    const row = document.createElement('div');
+    row.className = 'hist-row';
+    row.innerHTML = `
+      <div class="status-dot p"></div>
+      <div class="hist-row-left">
+        <div class="hist-row-name">${l.nombre}</div>
+        <div class="hist-row-meta">${l.grado_seccion}${l.dni?' · DNI '+l.dni:''}</div>
+      </div>
+      <div class="hist-row-time">${l.hora}</div>`;
+    list.appendChild(row);
+  });
+  cont.appendChild(list);
+}
+
+/* ════════════════════════════════════════════════
+   MODAL CONFIG
+════════════════════════════════════════════════ */
+function openModal(){
+  document.getElementById('cfg-nombre').value  = cfg.nombre;
+  document.getElementById('cfg-webhook').value = cfg.webhook;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+function closeModalOutside(e){ if(e.target===document.getElementById('modal')) closeModal(); }
+function saveConfig(){
+  const n = document.getElementById('cfg-nombre').value.trim();
+  const w = document.getElementById('cfg-webhook').value.trim();
+  if(!n||!w){ alert('Completa ambos campos'); return; }
+  cfg = { nombre:n, webhook:w };
+  saveCfg();
+  document.getElementById('main-nombre').textContent = n;
+  closeModal();
+  loadSections();
+}
+
+/* ════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════ */
+function showToast(type, ico, name, sub){
+  const el = document.getElementById('toast');
+  el.className = 'show '+type;
+  document.getElementById('toast-ico').textContent = ico;
   document.getElementById('toast-name').textContent = name;
   document.getElementById('toast-sub').textContent = sub;
-  toast.className = 'result-toast show ' + (ok ? 'ok' : 'err');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> el.classList.remove('show'), 2800);
 }
 
-// ── ENVIAR A GOOGLE SHEETS ──
-async function sendToSheets(entry) {
-  if (!config.webhook) return;
-  try {
-    await fetch(config.webhook, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry),
-    });
-  } catch (e) {
-    console.warn('No se pudo enviar al webhook:', e);
-  }
+/* ════════════════════════════════════════════════
+   STORAGE & UTILS
+════════════════════════════════════════════════ */
+function saveCfg(){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+function saveLogs(){ localStorage.setItem(LOG_KEY, JSON.stringify(allLogs)); }
+
+// Borrar logs de más de 7 días para no acumular
+function purgeLogs(){
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
+  const cutKey = dateKey(cutoff);
+  allLogs = allLogs.filter(l=> l.fecha >= cutKey);
+  saveLogs();
 }
 
-// ── RESUMEN ──
-function showSummary(sec) {
-  currentSection = sec;
-  const today = getTodayKey(sec);
-  const logs = JSON.parse(localStorage.getItem(today) || '[]');
-  document.getElementById('summary-section-name').textContent = sec;
-  document.getElementById('summary-date').textContent = new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
-  document.getElementById('stat-presentes').textContent = logs.length;
-  document.getElementById('stat-ausentes').textContent = '?';
-
-  const list = document.getElementById('summary-list');
-  list.innerHTML = '';
-  logs.forEach(l => {
-    const item = document.createElement('div');
-    item.className = 'summary-item';
-    item.innerHTML = `
-      <div class="summary-item-dot" style="background:var(--success);box-shadow:0 0 6px var(--success)"></div>
-      <div class="summary-item-name">${l.alumno}</div>
-      <div class="summary-item-time">${l.hora}</div>
-    `;
-    list.appendChild(item);
-  });
-  showScreen('summary');
+function dateKey(d){ return d.toISOString().slice(0,10); } // "2026-05-10"
+function timeNow(){ return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}); }
+function formatDateLabel(d){
+  return d.toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long'}).replace(/^\w/,c=>c.toUpperCase());
 }
 
-// ── CONFIG MODAL ──
-function openConfig() {
-  document.getElementById('cfg-nombre').value = config.nombre;
-  document.getElementById('cfg-webhook').value = config.webhook;
-  document.getElementById('cfg-secciones').value = config.secciones.join('\n');
-  document.getElementById('modal-config').classList.add('open');
+/* ════════════════════════════════════════════════
+   REGISTRO SW (offline)
+════════════════════════════════════════════════ */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
-function closeConfig(e) {
-  if (e.target === document.getElementById('modal-config')) {
-    document.getElementById('modal-config').classList.remove('open');
-  }
-}
-function saveConfig() {
-  config.nombre = document.getElementById('cfg-nombre').value.trim() || config.nombre;
-  config.webhook = document.getElementById('cfg-webhook').value.trim() || config.webhook;
-  const secs = document.getElementById('cfg-secciones').value.trim();
-  config.secciones = secs ? secs.split('\n').map(s => s.trim()).filter(Boolean) : config.secciones;
-  saveToStorage();
-  document.getElementById('modal-config').classList.remove('open');
-  renderMainScreen();
-}
-
-// ── UTILS ──
-function saveToStorage() { localStorage.setItem('asistqr-config', JSON.stringify(config)); }
-function getTodayKey(sec) {
-  const d = new Date();
-  return `log-${sec}-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
-}
-
-// ── BACK GESTURE ──
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    if (document.getElementById('modal-config').classList.contains('open')) {
-      document.getElementById('modal-config').classList.remove('open');
-    } else if (document.getElementById('screen-scanner').classList.contains('active')) {
-      stopScanner();
-    }
-  }
-});
 </script>
 </body>
 </html>
