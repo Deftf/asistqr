@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- Fondo negro redondeado -->
+  <rect width="192" height="192" rx="40" fill="#0a0a0a"/>
+
+  <!-- Símbolo QR estilizado centrado -->
+  <!-- Esquina superior izquierda -->
+  <rect x="36" y="36" width="46" height="46" rx="6" fill="white"/>
+  <rect x="44" y="44" width="30" height="30" rx="3" fill="#0a0a0a"/>
+  <rect x="52" y="52" width="14" height="14" rx="2" fill="white"/>
+
+  <!-- Esquina superior derecha -->
+  <rect x="110" y="36" width="46" height="46" rx="6" fill="white"/>
+  <rect x="118" y="44" width="30" height="30" rx="3" fill="#0a0a0a"/>
+  <rect x="126" y="52" width="14" height="14" rx="2" fill="white"/>
+
+  <!-- Esquina inferior izquierda -->
+  <rect x="36" y="110" width="46" height="46" rx="6" fill="white"/>
+  <rect x="44" y="118" width="30" height="30" rx="3" fill="#0a0a0a"/>
+  <rect x="52" y="126" width="14" height="14" rx="2" fill="white"/>
+
+  <!-- Puntos de datos zona inferior derecha -->
+  <rect x="110" y="110" width="14" height="14" rx="2" fill="white"/>
+  <rect x="128" y="110" width="14" height="14" rx="2" fill="white"/>
+  <rect x="146" y="110" width="10" height="10" rx="2" fill="white"/>
+  <rect x="110" y="128" width="10" height="10" rx="2" fill="white"/>
+  <rect x="124" y="124" width="18" height="18" rx="3" fill="white"/>
+  <rect x="146" y="126" width="10" height="10" rx="2" fill="white"/>
+  <rect x="110" y="146" width="14" height="10" rx="2" fill="white"/>
+  <rect x="130" y="146" width="26" height="10" rx="2" fill="white"/>
+</svg>

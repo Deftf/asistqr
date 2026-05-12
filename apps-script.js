@@ -28,23 +28,39 @@ function doGet(e) {
 
 function getSecciones() {
   try {
-    var ss     = SpreadsheetApp.getActiveSpreadsheet();
-    var hoja   = ss.getSheetByName(HOJA_ALUMNOS);
+    var ss   = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName(HOJA_ALUMNOS);
 
     if (!hoja || hoja.getLastRow() < 2) {
-      return jsonOut({ secciones: [], mensaje: "Hoja Alumnos vacía o inexistente" });
+      return jsonOut({ secciones: [], alumnos: [], mensaje: "Hoja Alumnos vacía o inexistente" });
     }
 
-    // Columna D = Grado y Sección (índice 3 en base 0)
-    var data     = hoja.getRange(2, 4, hoja.getLastRow() - 1, 1).getValues();
-    var secciones = [...new Set(
-      data.map(r => String(r[0]).trim()).filter(Boolean)
-    )].sort();
+    // Columnas: A=N°, B=Nombres, C=DNI, D=Grado y Sección
+    var rows = hoja.getRange(2, 1, hoja.getLastRow() - 1, 4).getValues();
 
-    return jsonOut({ secciones: secciones });
+    var secciones = [];
+    var alumnos   = [];
+
+    rows.forEach(function(r) {
+      var nombre  = String(r[1]).trim();
+      var dni     = String(r[2]).trim();
+      var seccion = String(r[3]).trim();
+      if (!nombre || !seccion) return;
+
+      // El código QR que generó la fórmula es: Nombre|DNI
+      var codigo = nombre + "|" + dni;
+
+      alumnos.push({ codigo: codigo, nombre: nombre, dni: dni, grado_seccion: seccion });
+
+      if (secciones.indexOf(seccion) === -1) secciones.push(seccion);
+    });
+
+    secciones.sort();
+
+    return jsonOut({ secciones: secciones, alumnos: alumnos });
 
   } catch (err) {
-    return jsonOut({ secciones: [], error: err.message });
+    return jsonOut({ secciones: [], alumnos: [], error: err.message });
   }
 }
 
